@@ -1,0 +1,68 @@
+#rm(list = ls())
+####获得当前路径#### 
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+#path <- getwd()
+#path
+#拆分出single频次
+library(dplyr, warn.conflicts = F)
+####读取数据####
+ASV.all <- read.delim('1.ASV_table.txt', header = TRUE, sep = '\t')
+#count.1####
+ASV.clean.1 <- ASV.all
+ASV.clean.1$count <- rowSums(ASV.clean.1[, 2:(ncol(ASV.clean.1) - 1)] != 0)
+ASV.counts.1 <- ASV.clean.1[ASV.clean.1$count < 2,]
+ASV.counts.1$sum <- rowSums(ASV.counts.1[, 2:(ncol(ASV.counts.1) - 2)], na.rm = TRUE)
+ASV.counts.2 <- ASV.clean.1[ASV.clean.1$count > 1,]
+ASV.counts.2$sum <- rowSums(ASV.counts.2[, 2:(ncol(ASV.counts.2) - 2)], na.rm = TRUE)
+library(openxlsx)
+wb.1 <- createWorkbook()
+# 添加 ASV.counts.1 数据框到工作簿中
+addWorksheet(wb.1, "ASV.counts.1")  # 添加一个名为 "ASV.counts.1" 的工作表
+writeData(wb.1, sheet = "ASV.counts.1", ASV.counts.1)  # 将数据写入工作表
+# 保存工作簿到文件
+saveWorkbook(wb.1, "ASV.counts.1.xlsx", overwrite = TRUE)
+wb.2 <- createWorkbook()
+# 添加 ASV.counts.1 数据框到工作簿中
+addWorksheet(wb.2, "ASV.counts.2")  # 添加一个名为 "ASV.counts.1" 的工作表
+writeData(wb.2, sheet = "ASV.counts.2", ASV.counts.2)  # 将数据写入工作表
+# 保存工作簿到文件
+saveWorkbook(wb.2, "ASV.counts.2.xlsx", overwrite = TRUE)#delete k__Bacteria,
+####ASV.all特征序列####
+#拆分feature sequences/twice
+ASV <- ASV.counts.1
+ASV$ASVs <- paste(">", ASV$ASV_num, sep = "") 
+feature.sequence <- read.delim('ASVs.fasta', header = F,  sep = '\t', stringsAsFactors = FALSE, check.names = FALSE)
+colnames(feature.sequence)[colnames(feature.sequence) == 'V1'] <- 'Sequence'
+feature.sequence$Sequence <- sub("^>(.*?) .*", ">\\1", feature.sequence$Sequence)
+feature.sequence$ASVs <- feature.sequence$Sequence
+#feature.sequence$ID <- rownames(feature.sequence)
+feature.sequence$ID <- as.numeric(rownames(feature.sequence)) 
+#将每个奇数行的值复制到其后面的偶数行中
+feature.sequence$ASVs[seq(2, nrow(feature.sequence), by = 2)] <- feature.sequence$Sequence[seq(1, nrow(feature.sequence), by = 2)]
+#筛选获取clean.feature.sequence
+result <- inner_join(feature.sequence, ASV, by = "ASVs")
+#row_count <- nrow(result)
+#ASV.num <- row_count / 2
+#ASV.num #下面的1:5778位置，自行改为实际计算结果
+clean.result <- result[, c("Sequence")]
+write.table(clean.result, "feature.sequence.1.fasta", row.names = F, col.names = F,  sep = "\t", quote = FALSE)
+#拆分feature sequences/twice
+ASV <- ASV.counts.2
+ASV$ASVs <- paste(">", ASV$ASV_num, sep = "") 
+feature.sequence <- read.delim('ASVs.fasta', header = F,  sep = '\t', stringsAsFactors = FALSE, check.names = FALSE)
+colnames(feature.sequence)[colnames(feature.sequence) == 'V1'] <- 'Sequence'
+feature.sequence$Sequence <- sub("^>(.*?) .*", ">\\1", feature.sequence$Sequence)
+feature.sequence$ASVs <- feature.sequence$Sequence
+#feature.sequence$ID <- rownames(feature.sequence)
+feature.sequence$ID <- as.numeric(rownames(feature.sequence)) 
+#将每个奇数行的值复制到其后面的偶数行中
+feature.sequence$ASVs[seq(2, nrow(feature.sequence), by = 2)] <- feature.sequence$Sequence[seq(1, nrow(feature.sequence), by = 2)]
+#筛选获取clean.feature.sequence
+result <- inner_join(feature.sequence, ASV, by = "ASVs")
+#row_count <- nrow(result)
+#ASV.num <- row_count / 2
+#ASV.num #下面的1:5778位置，自行改为实际计算结果
+clean.result <- result[, c("Sequence")]
+write.table(clean.result, "feature.sequence.2.fasta", row.names = F, col.names = F,  sep = "\t", quote = FALSE)
+
+
